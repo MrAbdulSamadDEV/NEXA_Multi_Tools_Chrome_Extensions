@@ -104,12 +104,12 @@ nexa_tools/
 
 ## 📥 Installation Guide
 
-1. Download and extract **`nexa_tools_ultimate.zip`**.
+1. Download and extract **`NEXA_Multi_Tools_Chrome_Extensions.zip`**.
 2. Open Google Chrome (or Edge / Brave / Opera).
 3. Type `chrome://extensions/` in the address bar.
 4. Enable **Developer mode** toggle in the top-right corner.
 5. Click the **Load unpacked** button in the top-left corner.
-6. Select the extracted `nexa_tools` folder.
+6. Select the extracted `NEXA_Multi_Tools_Chrome_Extensions` folder.
 7. Pin **NEXA Tools Pro** in your Chrome toolbar for instant access!
 
 ---
