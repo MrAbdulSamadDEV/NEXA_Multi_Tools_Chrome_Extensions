@@ -3,14 +3,14 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NEXA Tools</title>
+<title>NEXA Tools Pro</title>
 <link rel="stylesheet" href="popup.css">
 </head>
 <body>
 <header class="top">
   <div class="brand">
     <div class="logo"><img src="icons/icon128.png" alt="NEXA"></div>
-    <div><h1>NEXA Tools</h1><span>SMART BROWSER TOOLKIT • v8.0.0</span></div>
+    <div><h1>NEXA Tools Pro</h1><span>SMART BROWSER &amp; SOCIAL SUITE • v9.0.0</span></div>
   </div>
   <div style="display:flex;gap:6px;">
     <button class="iconbtn" id="openSidePanel" title="Open in Side Panel">
@@ -25,6 +25,7 @@
 
 <nav>
   <button class="nav active" data-page="home">Home</button>
+  <button class="nav" data-page="social">Social</button>
   <button class="nav" data-page="capture">Capture</button>
   <button class="nav" data-page="media">Media</button>
   <button class="nav" data-page="display">Display</button>
@@ -35,8 +36,10 @@
 <main>
 <!-- HOME PAGE -->
 <section id="home" class="page active">
-  <div class="section-title">Browser Tools</div>
+  <div class="section-title">Browser &amp; Social Tools</div>
   <div class="toolgrid">
+    <button class="tool" id="homeGithubBot"><span class="bigicon">🐱</span><b>GitHub Bot</b><small>Auto Follow &amp; Unfollow</small></button>
+    <button class="tool" id="homeTiktokBot"><span class="bigicon">🎵</span><b>TikTok Bot</b><small>Auto Follow &amp; Unfollow</small></button>
     <button class="tool" id="cleanurl"><span class="bigicon">⌁</span><b>Clean URL</b><small>Remove tracking parameters</small></button>
     <button class="tool" id="duplicates"><span class="bigicon">▤</span><b>Duplicate Tabs</b><small>Close duplicate pages</small></button>
     <button class="tool" id="savehtml"><span class="bigicon">⇩</span><b>Save Page</b><small>Download current HTML</small></button>
@@ -47,6 +50,58 @@
     <button class="tool" id="homeAreaScreenshot"><span class="bigicon">✂</span><b>Custom Screenshot</b><small>Select &amp; crop area</small></button>
   </div>
   <div class="quickrow"><button id="copyUrl" class="widebtn">Copy URL</button><button id="copyTitle" class="widebtn">Copy title</button></div>
+</section>
+
+<!-- SOCIAL AUTOMATION PAGE (GITHUB & TIKTOK) -->
+<section id="social" class="page">
+  <div class="section-title">Social Automation Suite</div>
+
+  <div class="subtabs">
+    <button id="tabSocialGithub" class="subtab active">🐱 GitHub Bot</button>
+    <button id="tabSocialTiktok" class="subtab">🎵 TikTok Bot</button>
+  </div>
+
+  <!-- GITHUB AUTOMATION VIEW -->
+  <div id="socialGithubView">
+    <div class="card">
+      <div class="labelrow"><b>GitHub Auto Follow &amp; Unfollow</b><span>Turbo V3</span></div>
+      <small style="color:rgb(140,140,140);margin-bottom:10px;display:block;">Automate following user followers or mass unfollowing with multi-page pagination.</small>
+
+      <div style="margin-bottom:8px;">
+        <input type="text" id="socialGhUser" class="color-hex" placeholder="GitHub username (e.g. torvalds, your-account)…" style="height:34px;font-size:12px;padding:0 10px;width:100%;">
+      </div>
+
+      <div class="quickrow">
+        <button id="btnOpenGhFollowers" class="primary">➕ Open Followers (Follow)</button>
+        <button id="btnOpenGhFollowing" class="widebtn" style="border-color:#da3633;color:#ff7b72;">➖ Open Following (Unfollow)</button>
+      </div>
+
+      <div class="hint">
+        💡 <b>How it works on GitHub:</b> Once the page opens, NEXA's floating bot widget will appear at the bottom-right. Select your mode (Follow / Unfollow), pick a speed (Safe 2s / Fast 0.8s / Turbo 0.3s), and click <b>Start</b>!
+      </div>
+    </div>
+  </div>
+
+  <!-- TIKTOK AUTOMATION VIEW -->
+  <div id="socialTiktokView" style="display:none;">
+    <div class="card">
+      <div class="labelrow"><b style="color:#fe2c55;">TikTok Auto Follow &amp; Unfollow</b><span>Scroll V3</span></div>
+      <small style="color:rgb(140,140,140);margin-bottom:10px;display:block;">Automate follow or unfollow on TikTok profiles, followers modals, and search with auto infinite scroll.</small>
+
+      <div style="margin-bottom:8px;">
+        <input type="text" id="socialTtUser" class="color-hex" placeholder="TikTok username (@username) or search query…" style="height:34px;font-size:12px;padding:0 10px;width:100%;">
+      </div>
+
+      <div class="quickrow">
+        <button id="btnOpenTtProfile" class="primary" style="background:#25f4ee;color:#000;border-color:#25f4ee;">👤 Open TikTok Profile</button>
+        <button id="btnOpenTtSearch" class="widebtn" style="border-color:#fe2c55;color:#fe2c55;">🔍 Search TikTok Users</button>
+      </div>
+
+      <div class="hint">
+        💡 <b>How it works on TikTok:</b> Open any profile's Followers/Following dialog or search list. NEXA's floating widget will auto-click follow/unfollow and scroll down automatically to load more users!
+      </div>
+    </div>
+  </div>
 </section>
 
 <!-- CAPTURE PAGE (Screenshots & Video Recording) -->
@@ -371,7 +426,7 @@
   </div>
 </div>
 
-<footer>NEXA Tools · v8.0.0</footer>
+<footer>NEXA Tools Pro · v9.0.0</footer>
 <script src="qrcode-local.js"></script>
 <script src="popup.js"></script>
 </body>

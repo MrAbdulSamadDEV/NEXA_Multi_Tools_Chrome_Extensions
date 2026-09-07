@@ -75,14 +75,21 @@ async function inject(fn, args = []) {
 }
 
 /* ---------------- Tab Navigation ---------------- */
+function switchToTab(pageId) {
+  document.querySelectorAll(".nav").forEach(x => {
+    if (x.dataset.page === pageId) x.classList.add("active");
+    else x.classList.remove("active");
+  });
+  document.querySelectorAll(".page").forEach(x => {
+    if (x.id === pageId) x.classList.add("active");
+    else x.classList.remove("active");
+  });
+  if (pageId === "media" && !detectedImages.length) scanAllMedia();
+}
+
 document.querySelectorAll(".nav").forEach(btn => {
   btn.addEventListener("click", () => {
-    document.querySelectorAll(".nav").forEach(x => x.classList.remove("active"));
-    document.querySelectorAll(".page").forEach(x => x.classList.remove("active"));
-    btn.classList.add("active");
-    const page = $(btn.dataset.page);
-    if (page) page.classList.add("active");
-    if (btn.dataset.page === "media" && !detectedImages.length) scanAllMedia();
+    switchToTab(btn.dataset.page);
   });
 });
 
@@ -108,6 +115,19 @@ $("copyUrl").onclick = async () => { const d = await pageData(); await copyText(
 $("copyTitle").onclick = async () => { const d = await pageData(); await copyText(d.title); };
 
 /* ---------------- Home Page Tools ---------------- */
+if ($("homeGithubBot")) {
+  $("homeGithubBot").onclick = () => {
+    switchToTab("social");
+    if ($("tabSocialGithub")) $("tabSocialGithub").click();
+  };
+}
+if ($("homeTiktokBot")) {
+  $("homeTiktokBot").onclick = () => {
+    switchToTab("social");
+    if ($("tabSocialTiktok")) $("tabSocialTiktok").click();
+  };
+}
+
 $("cleanurl").onclick = async () => {
   try {
     const d = await pageData();
@@ -211,6 +231,83 @@ if ($("homeDarkMode")) {
 
 if ($("homeAreaScreenshot")) {
   $("homeAreaScreenshot").onclick = () => startAreaScreenshot();
+}
+
+/* ================================================================
+   SOCIAL AUTOMATION SUITE (GITHUB & TIKTOK)
+   ================================================================ */
+if ($("tabSocialGithub") && $("tabSocialTiktok")) {
+  $("tabSocialGithub").onclick = () => {
+    $("tabSocialGithub").classList.add("active");
+    $("tabSocialTiktok").classList.remove("active");
+    $("socialGithubView").style.display = "block";
+    $("socialTiktokView").style.display = "none";
+  };
+  $("tabSocialTiktok").onclick = () => {
+    $("tabSocialTiktok").classList.add("active");
+    $("tabSocialGithub").classList.remove("active");
+    $("socialTiktokView").style.display = "block";
+    $("socialGithubView").style.display = "none";
+  };
+}
+
+// GitHub Button Handlers
+function cleanGhUser() {
+  let u = $("socialGhUser")?.value.trim().replace(/^@/, "") || "";
+  if (u.includes("github.com/")) {
+    const parts = u.split("github.com/")[1].split("/");
+    u = parts[0];
+  }
+  return u;
+}
+
+if ($("btnOpenGhFollowers")) {
+  $("btnOpenGhFollowers").onclick = () => {
+    const user = cleanGhUser();
+    if (!user) {
+      if ($("socialGhUser")) $("socialGhUser").focus();
+      return msg("Please enter a GitHub username");
+    }
+    chrome.tabs.create({ url: `https://github.com/${user}?tab=followers` });
+  };
+}
+
+if ($("btnOpenGhFollowing")) {
+  $("btnOpenGhFollowing").onclick = () => {
+    const user = cleanGhUser();
+    if (!user) {
+      if ($("socialGhUser")) $("socialGhUser").focus();
+      return msg("Please enter your GitHub username");
+    }
+    chrome.tabs.create({ url: `https://github.com/${user}?tab=following` });
+  };
+}
+
+// TikTok Button Handlers
+if ($("btnOpenTtProfile")) {
+  $("btnOpenTtProfile").onclick = () => {
+    let val = $("socialTtUser")?.value.trim() || "";
+    if (!val) {
+      chrome.tabs.create({ url: "https://www.tiktok.com" });
+      return;
+    }
+    val = val.replace(/^@/, "");
+    if (val.includes("tiktok.com/@")) {
+      val = val.split("tiktok.com/@")[1].split("/")[0];
+    }
+    chrome.tabs.create({ url: `https://www.tiktok.com/@${val}` });
+  };
+}
+
+if ($("btnOpenTtSearch")) {
+  $("btnOpenTtSearch").onclick = () => {
+    let q = $("socialTtUser")?.value.trim() || "";
+    if (!q) {
+      chrome.tabs.create({ url: "https://www.tiktok.com" });
+      return;
+    }
+    chrome.tabs.create({ url: `https://www.tiktok.com/search/user?q=${encodeURIComponent(q)}` });
+  };
 }
 
 /* ================================================================
@@ -1024,7 +1121,6 @@ function renderFilteredMedia() {
     img.onerror = () => { img.removeAttribute("src"); thumb.classList.add("broken"); thumb.textContent = "✕"; };
     thumb.appendChild(img);
 
-    // Clicking thumbnail opens Lightbox modal
     thumb.onclick = e => {
       if (e.target.tagName === "INPUT" || e.target.tagName === "BUTTON") return;
       openImagePreviewModal(x);
@@ -1223,7 +1319,6 @@ function loadConverterFile(file) {
 }
 
 function initConverterWithImage(dataUrlOrHttpUrl, filename = "image.png") {
-  // Switch to converter subtab
   if ($("tabMediaConvert")) $("tabMediaConvert").click();
 
   converterSourceFileName = filename.replace(/\.[^/.]+$/, "");
@@ -1244,13 +1339,11 @@ function initConverterWithImage(dataUrlOrHttpUrl, filename = "image.png") {
   img.src = dataUrlOrHttpUrl;
 }
 
-// Target Format Selector Buttons
 document.querySelectorAll(".format-btn[data-target-format]").forEach(btn => {
   btn.onclick = () => {
     document.querySelectorAll(".format-btn").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
     targetFormat = btn.dataset.targetFormat;
-    // Toggle quality slider visibility for lossy formats
     if (targetFormat === "jpeg" || targetFormat === "webp") {
       $("convQualityWrap").style.display = "block";
     } else {
@@ -1283,7 +1376,6 @@ function updateConverterResultInfo() {
   $("convResultInfo").textContent = `Convert to: .${ext.toUpperCase()} (${w} × ${h} px)`;
 }
 
-// Universal Image Converter Engine
 async function convertAndDownloadImage() {
   if (!converterSourceImage) return msg("Upload or select an image first");
 
@@ -1302,7 +1394,6 @@ async function convertAndDownloadImage() {
     canvas.height = targetH;
     const ctx = canvas.getContext("2d");
 
-    // For JPEG, fill white background to prevent black transparent areas
     if (targetFormat === "jpeg") {
       ctx.fillStyle = "#ffffff";
       ctx.fillRect(0, 0, targetW, targetH);
@@ -1320,11 +1411,9 @@ async function convertAndDownloadImage() {
     } else if (targetFormat === "webp") {
       finalBlob = await new Promise(res => canvas.toBlob(res, "image/webp", quality));
     } else if (targetFormat === "ico") {
-      // Create valid Windows ICO file from PNG buffer
       const pngBlob = await new Promise(res => canvas.toBlob(res, "image/png"));
       finalBlob = await createIcoFromPngBlob(pngBlob, targetW, targetH);
     } else if (targetFormat === "svg") {
-      // Vector SVG wrapper with embedded high-res image
       const dataUrl = canvas.toDataURL("image/png");
       const svgText = `<svg xmlns="http://www.w3.org/2000/svg" width="${targetW}" height="${targetH}" viewBox="0 0 ${targetW} ${targetH}"><image width="${targetW}" height="${targetH}" href="${dataUrl}"/></svg>`;
       finalBlob = new Blob([svgText], { type: "image/svg+xml;charset=utf-8" });
@@ -1350,31 +1439,28 @@ async function convertAndDownloadImage() {
   }
 }
 
-// Windows ICO format builder
 async function createIcoFromPngBlob(pngBlob, width, height) {
   const buffer = await pngBlob.arrayBuffer();
   const pngBytes = new Uint8Array(buffer);
 
   const header = new Uint8Array(6);
-  header[0] = 0; header[1] = 0; // Reserved
-  header[2] = 1; header[3] = 0; // 1 = ICO
-  header[4] = 1; header[5] = 0; // 1 image
+  header[0] = 0; header[1] = 0;
+  header[2] = 1; header[3] = 0;
+  header[4] = 1; header[5] = 0;
 
   const entry = new Uint8Array(16);
   entry[0] = width >= 256 ? 0 : width;
   entry[1] = height >= 256 ? 0 : height;
-  entry[2] = 0; // color count
-  entry[3] = 0; // reserved
-  entry[4] = 1; entry[5] = 0; // color planes
-  entry[6] = 32; entry[7] = 0; // 32 bits per pixel
+  entry[2] = 0;
+  entry[3] = 0;
+  entry[4] = 1; entry[5] = 0;
+  entry[6] = 32; entry[7] = 0;
 
   const len = pngBytes.length;
   entry[8] = len & 0xFF;
   entry[9] = (len >> 8) & 0xFF;
   entry[10] = (len >> 16) & 0xFF;
   entry[11] = (len >> 24) & 0xFF;
-
-  // Offset = 6 + 16 = 22
   entry[12] = 22; entry[13] = 0; entry[14] = 0; entry[15] = 0;
 
   const combined = new Uint8Array(6 + 16 + len);
@@ -1900,7 +1986,6 @@ window.addEventListener("paste", e => {
     if (items[i].type.startsWith("image/")) {
       const file = items[i].getAsFile();
       if (file) {
-        // If in media convert tab, load to converter; else scan QR
         if ($("mediaConvertView") && $("mediaConvertView").style.display !== "none") {
           loadConverterFile(file);
         } else {

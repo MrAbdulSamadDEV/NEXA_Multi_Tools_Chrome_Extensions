@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "NEXA Tools",
+  "name": "NEXA Tools Pro",
   "short_name": "NEXA",
-  "version": "8.0.0",
-  "description": "All-in-one browser toolkit: Full Page & Custom Area screenshots, screen recording with audio, all images & icons downloader, QR code scanner & generator, 2000% audio boost, and developer tools.",
+  "version": "9.0.0",
+  "description": "All-in-one browser toolkit & social automation: Full Page screenshots, screen recording, media downloader, offline converter, 2000% audio boost, QR studio, and GitHub & TikTok Auto Follow/Unfollow bots.",
   "permissions": [
     "tabs",
     "activeTab",
@@ -19,8 +19,20 @@
   "background": {
     "service_worker": "background.js"
   },
+  "content_scripts": [
+    {
+      "matches": ["https://github.com/*"],
+      "js": ["content-github.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://*.tiktok.com/*"],
+      "js": ["content-tiktok.js"],
+      "run_at": "document_idle"
+    }
+  ],
   "action": {
-    "default_title": "NEXA Tools",
+    "default_title": "NEXA Tools Pro",
     "default_popup": "popup.html"
   },
   "side_panel": {
