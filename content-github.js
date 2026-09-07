@@ -1,12 +1,12 @@
 /**
  * NEXA Tools Pro - GitHub Automation Module
- * Handles Auto Follow & Auto Unfollow with Rate Limit Auto-Stop, Turbo/SPA, Pagination, and Speed Presets.
+ * Handles Auto Follow & Auto Unfollow with Accurate Rate Limit Detection (No False Positives),
+ * Turbo/SPA compatibility, Multi-Page Pagination, and Speed Controls.
  */
 
 (function () {
   let isRunning = false;
   let currentMode = "follow"; // "follow" or "unfollow"
-  let consecutiveFailures = 0;
 
   function isGitHubUserListPage() {
     const s = window.location.search.toLowerCase();
@@ -31,37 +31,26 @@
     );
   }
 
-  // GitHub Follow Limit / Rate Limit Detection
-  function checkGitHubRateLimit() {
-    // 1. Check flash error banners
-    const flashMessages = document.querySelectorAll(
-      '.flash-error, .flash-warn, .js-flash-alert, div[class*="flash"][class*="error"], div[role="alert"]'
+  // Accurate GitHub Limit Detection (Avoids false positives from generic page warnings)
+  function checkGenuineGitHubLimit() {
+    const errorContainers = document.querySelectorAll(
+      '.flash-error, .js-flash-alert, div[class*="flash-error"], div[role="alert"]'
     );
-    for (const el of flashMessages) {
+    for (const el of errorContainers) {
       if (!isElementVisible(el)) continue;
       const text = (el.innerText || el.textContent || "").toLowerCase();
+      // Only match specific rate-limiting or follow-exhaustion phrases
       if (
         text.includes("rate limit") ||
-        text.includes("too fast") ||
-        text.includes("cannot follow") ||
-        text.includes("abuse") ||
-        text.includes("limit reached") ||
-        text.includes("try again later") ||
-        text.includes("blocked")
+        text.includes("too many requests") ||
+        text.includes("reached the limit for following") ||
+        text.includes("you cannot follow any more") ||
+        text.includes("exceeded the maximum") ||
+        text.includes("try again in a few minutes")
       ) {
-        return "GitHub Limit Detected: " + text.slice(0, 70);
+        return text.slice(0, 80);
       }
     }
-
-    // 2. Check for disabled action buttons with error hints
-    const disabledButtons = document.querySelectorAll('button[disabled], input[type="submit"][disabled]');
-    for (const btn of disabledButtons) {
-      const tip = (btn.getAttribute("aria-label") || btn.getAttribute("title") || "").toLowerCase();
-      if (tip.includes("limit") || tip.includes("blocked") || tip.includes("unable to follow")) {
-        return "Action Restricted by GitHub";
-      }
-    }
-
     return null;
   }
 
@@ -233,7 +222,7 @@
             </div>
           </div>
 
-          <!-- Custom Delay & Pagination -->
+          <!-- Custom Delay & Options -->
           <div style="margin-bottom: 8px;">
             <label style="display: flex; justify-content: space-between; align-items: center; color: #c9d1d9;">
               <span>Delay (Seconds):</span>
@@ -250,10 +239,17 @@
             </label>
           </div>
 
-          <div style="margin-bottom: 12px;">
+          <div style="margin-bottom: 6px;">
             <label style="display: flex; align-items: center; gap: 6px; color: #c9d1d9; cursor: pointer;">
               <input type="checkbox" id="gh-sab-autopage" checked style="cursor: pointer;" />
               <span>Next page auto-navigate</span>
+            </label>
+          </div>
+
+          <div style="margin-bottom: 12px;">
+            <label style="display: flex; align-items: center; gap: 6px; color: #c9d1d9; cursor: pointer;">
+              <input type="checkbox" id="gh-sab-limit-guard" checked style="cursor: pointer;" />
+              <span>Auto-stop on real rate limit</span>
             </label>
           </div>
 
@@ -299,6 +295,7 @@
     const countSpan = document.getElementById("gh-sab-count");
     const delayInput = document.getElementById("gh-sab-delay");
     const autoPageCheck = document.getElementById("gh-sab-autopage");
+    const limitGuardCheck = document.getElementById("gh-sab-limit-guard");
     const modeFollowBtn = document.getElementById("gh-sab-mode-follow");
     const modeUnfollowBtn = document.getElementById("gh-sab-mode-unfollow");
     const speedButtons = document.querySelectorAll(".gh-sab-speed");
@@ -369,7 +366,6 @@
 
     startBtn.onclick = () => {
       sessionStorage.setItem("gh_sab_active", "1");
-      consecutiveFailures = 0;
       runAutomation();
     };
 
@@ -395,7 +391,7 @@
           clearInterval(id);
           resolve();
         }
-      }, 50);
+      }, 40);
     });
   }
 
@@ -409,6 +405,7 @@
     const countSpan = document.getElementById("gh-sab-count");
     const delayInput = document.getElementById("gh-sab-delay");
     const autoPageCheck = document.getElementById("gh-sab-autopage");
+    const limitGuardCheck = document.getElementById("gh-sab-limit-guard");
 
     if (!startBtn || !stopBtn) return;
 
@@ -429,15 +426,6 @@
     if (isNaN(delaySec) || delaySec < 0.1) delaySec = 0.5;
     const delayMs = delaySec * 1000;
 
-    // Check rate limit before starting
-    const initialLimitReason = checkGitHubRateLimit();
-    if (initialLimitReason) {
-      statusSpan.textContent = "⚠️ Limit detected! Auto-stopped.";
-      statusSpan.style.color = "#f85149";
-      haltAutomation("Rate Limit Reached");
-      return;
-    }
-
     const buttons = getTargetButtons(currentMode);
     let total = parseInt(sessionStorage.getItem("gh_sab_count") || "0", 10);
 
@@ -448,13 +436,15 @@
       for (let i = 0; i < buttons.length; i++) {
         if (!isRunning || sessionStorage.getItem("gh_sab_active") !== "1") break;
 
-        // Check rate limit continuously
-        const limitAlert = checkGitHubRateLimit();
-        if (limitAlert) {
-          statusSpan.textContent = "⚠️ Limit Hit! Auto-stopped for safety.";
-          statusSpan.style.color = "#f85149";
-          haltAutomation("Rate Limit Hit");
-          return;
+        // Check genuine rate limit only if limit guard is enabled
+        if (limitGuardCheck && limitGuardCheck.checked) {
+          const limitMsg = checkGenuineGitHubLimit();
+          if (limitMsg) {
+            statusSpan.textContent = "⚠️ Limit Hit! Auto-stopped for safety.";
+            statusSpan.style.color = "#f85149";
+            haltAutomation("Rate Limit Hit");
+            return;
+          }
         }
 
         const btn = buttons[i];
@@ -472,20 +462,6 @@
           await waitInterval(delayMs);
         } catch (_) {
           break;
-        }
-
-        // Verify button state changed (if it still has same state after delay, increment failure)
-        const updatedText = (btn.value || btn.textContent || "").trim().toLowerCase();
-        if (currentMode === "follow" && updatedText.includes("follow") && !updatedText.includes("unfollow")) {
-          consecutiveFailures++;
-          if (consecutiveFailures >= 3) {
-            statusSpan.textContent = "⚠️ Follow Limit Hit! Auto-stopped.";
-            statusSpan.style.color = "#f85149";
-            haltAutomation("Limit Reached");
-            return;
-          }
-        } else {
-          consecutiveFailures = 0;
         }
       }
     }

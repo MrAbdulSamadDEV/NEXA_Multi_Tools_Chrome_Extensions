@@ -1,12 +1,12 @@
 /**
  * NEXA Tools Pro - TikTok Automation Module
- * Handles Auto Follow & Auto Unfollow with Rate Limit Auto-Stop, Infinite Scroll, and Speed Controls.
+ * Handles Auto Follow & Auto Unfollow with Accurate Limit Detection (No False Positives),
+ * Infinite Scroll, and Speed Controls.
  */
 
 (function () {
   let isRunning = false;
   let currentMode = "follow"; // "follow" or "unfollow"
-  let consecutiveFailures = 0;
 
   function isElementVisible(el) {
     if (!el) return false;
@@ -18,39 +18,22 @@
     );
   }
 
-  // Detect TikTok Rate Limit or Action Block
-  function checkTikTokRateLimit() {
-    // 1. Check floating toast alerts
+  // Detect genuine TikTok Rate Limit / Action Block (Toast alerts)
+  function checkGenuineTikTokLimit() {
     const toasts = document.querySelectorAll('div[class*="Toast"], div[role="status"], div[class*="DivToastContainer"], div[class*="Notification"]');
     for (const t of toasts) {
       if (!isElementVisible(t)) continue;
       const text = (t.innerText || t.textContent || "").toLowerCase();
       if (
         text.includes("following too fast") ||
-        text.includes("too fast") ||
-        text.includes("try again later") ||
-        text.includes("limit") ||
-        text.includes("blocked") ||
-        text.includes("unusual activity") ||
-        text.includes("unable to follow")
-      ) {
-        return "TikTok Limit: " + text.slice(0, 60);
-      }
-    }
-
-    // 2. Check modal error dialogs
-    const dialogs = document.querySelectorAll('div[role="dialog"]');
-    for (const d of dialogs) {
-      const text = (d.innerText || d.textContent || "").toLowerCase();
-      if (
-        text.includes("following too fast") ||
+        text.includes("reached the daily limit") ||
         text.includes("action blocked") ||
+        text.includes("too many attempts") ||
         text.includes("frequency limit")
       ) {
-        return "TikTok Action Blocked";
+        return text.slice(0, 70);
       }
     }
-
     return null;
   }
 
@@ -190,7 +173,7 @@
             </div>
           </div>
 
-          <!-- Custom Delay & Infinite Scroll Checkbox -->
+          <!-- Custom Delay & Checkboxes -->
           <div style="margin-bottom: 8px;">
             <label style="display: flex; justify-content: space-between; align-items: center; color: #cccccc;">
               <span>Delay (Seconds):</span>
@@ -207,10 +190,17 @@
             </label>
           </div>
 
-          <div style="margin-bottom: 12px;">
+          <div style="margin-bottom: 6px;">
             <label style="display: flex; align-items: center; gap: 6px; color: #cccccc; cursor: pointer;">
               <input type="checkbox" id="tt-sab-autoscroll" checked style="cursor: pointer; accent-color: #fe2c55;" />
               <span>Auto-scroll to load more users</span>
+            </label>
+          </div>
+
+          <div style="margin-bottom: 12px;">
+            <label style="display: flex; align-items: center; gap: 6px; color: #cccccc; cursor: pointer;">
+              <input type="checkbox" id="tt-sab-limit-guard" checked style="cursor: pointer; accent-color: #fe2c55;" />
+              <span>Auto-stop on real rate limit</span>
             </label>
           </div>
 
@@ -255,6 +245,7 @@
     const countSpan = document.getElementById("tt-sab-count");
     const delayInput = document.getElementById("tt-sab-delay");
     const autoScrollCheck = document.getElementById("tt-sab-autoscroll");
+    const limitGuardCheck = document.getElementById("tt-sab-limit-guard");
     const modeFollowBtn = document.getElementById("tt-sab-mode-follow");
     const modeUnfollowBtn = document.getElementById("tt-sab-mode-unfollow");
     const speedButtons = document.querySelectorAll(".tt-sab-speed");
@@ -331,7 +322,6 @@
 
     startBtn.onclick = () => {
       sessionStorage.setItem("tt_sab_active", "1");
-      consecutiveFailures = 0;
       runTikTokAutomation();
     };
 
@@ -357,7 +347,7 @@
           clearInterval(id);
           resolve();
         }
-      }, 50);
+      }, 40);
     });
   }
 
@@ -371,6 +361,7 @@
     const countSpan = document.getElementById("tt-sab-count");
     const delayInput = document.getElementById("tt-sab-delay");
     const autoScrollCheck = document.getElementById("tt-sab-autoscroll");
+    const limitGuardCheck = document.getElementById("tt-sab-limit-guard");
 
     if (!startBtn || !stopBtn) return;
 
@@ -391,26 +382,19 @@
     let total = parseInt(sessionStorage.getItem("tt_sab_count") || "0", 10);
     let consecutiveEmptyCount = 0;
 
-    // Check rate limit before beginning
-    const initialToast = checkTikTokRateLimit();
-    if (initialToast) {
-      statusSpan.textContent = "⚠️ TikTok Limit Hit! Auto-stopped.";
-      statusSpan.style.color = "#fe2c55";
-      haltTikTokAutomation("TikTok Limit Hit");
-      return;
-    }
-
     while (isRunning && sessionStorage.getItem("tt_sab_active") === "1") {
       statusSpan.textContent = "Scanning TikTok…";
       statusSpan.style.color = "#25f4ee";
 
-      // Check TikTok rate limit toast
-      const rateLimitMsg = checkTikTokRateLimit();
-      if (rateLimitMsg) {
-        statusSpan.textContent = "⚠️ Limit Reached! Auto-stopped for safety.";
-        statusSpan.style.color = "#fe2c55";
-        haltTikTokAutomation("Rate Limit Reached");
-        break;
+      // Check real limit toast only if limit guard is enabled
+      if (limitGuardCheck && limitGuardCheck.checked) {
+        const rateLimitMsg = checkGenuineTikTokLimit();
+        if (rateLimitMsg) {
+          statusSpan.textContent = "⚠️ Limit Hit! Auto-stopped for safety.";
+          statusSpan.style.color = "#fe2c55";
+          haltTikTokAutomation("Rate Limit Reached");
+          break;
+        }
       }
 
       const buttons = getTargetButtons(currentMode);
@@ -421,12 +405,14 @@
         for (let i = 0; i < buttons.length; i++) {
           if (!isRunning || sessionStorage.getItem("tt_sab_active") !== "1") break;
 
-          const limitAlert = checkTikTokRateLimit();
-          if (limitAlert) {
-            statusSpan.textContent = "⚠️ Limit Hit! Auto-stopped.";
-            statusSpan.style.color = "#fe2c55";
-            haltTikTokAutomation("TikTok Limit");
-            return;
+          if (limitGuardCheck && limitGuardCheck.checked) {
+            const limitAlert = checkGenuineTikTokLimit();
+            if (limitAlert) {
+              statusSpan.textContent = "⚠️ Limit Hit! Auto-stopped.";
+              statusSpan.style.color = "#fe2c55";
+              haltTikTokAutomation("TikTok Limit");
+              return;
+            }
           }
 
           const btn = buttons[i];
@@ -448,20 +434,6 @@
             await waitInterval(delayMs);
           } catch (_) {
             break;
-          }
-
-          // Check if button reverted (shadow limit detection)
-          const textAfter = (btn.innerText || btn.textContent || "").trim().toLowerCase();
-          if (currentMode === "follow" && (textAfter === "follow" || textAfter === "+ follow")) {
-            consecutiveFailures++;
-            if (consecutiveFailures >= 3) {
-              statusSpan.textContent = "⚠️ TikTok Follow Limit Reached! Auto-stopped.";
-              statusSpan.style.color = "#fe2c55";
-              haltTikTokAutomation("Limit Reached");
-              return;
-            }
-          } else {
-            consecutiveFailures = 0;
           }
         }
       } else {
