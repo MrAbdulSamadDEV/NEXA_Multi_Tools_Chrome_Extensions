@@ -10,9 +10,12 @@
 <header class="top">
   <div class="brand">
     <div class="logo"><img src="icons/icon128.png" alt="NEXA"></div>
-    <div><h1>NEXA Tools Pro</h1><span>SMART BROWSER &amp; SOCIAL SUITE • v9.0.0</span></div>
+    <div><h1>NEXA Tools Pro</h1><span>ULTIMATE BROWSER &amp; SOCIAL SUITE • v9.5.0</span></div>
   </div>
   <div style="display:flex;gap:6px;">
+    <button class="iconbtn" id="muteTabBtn" title="1-Click Mute / Unmute Tab">
+      <svg viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+    </button>
     <button class="iconbtn" id="openSidePanel" title="Open in Side Panel">
       <svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
     </button>
@@ -36,17 +39,21 @@
 <main>
 <!-- HOME PAGE -->
 <section id="home" class="page active">
-  <div class="section-title">Browser &amp; Social Tools</div>
+  <div class="section-title">All-in-One Power Tools</div>
   <div class="toolgrid">
-    <button class="tool" id="homeGithubBot"><span class="bigicon">🐱</span><b>GitHub Bot</b><small>Auto Follow &amp; Unfollow</small></button>
-    <button class="tool" id="homeTiktokBot"><span class="bigicon">🎵</span><b>TikTok Bot</b><small>Auto Follow &amp; Unfollow</small></button>
+    <button class="tool" id="homeGithubBot"><span class="bigicon">🐱</span><b>GitHub Bot</b><small>Follow &amp; Unfollow + Limit Stop</small></button>
+    <button class="tool" id="homeTiktokBot"><span class="bigicon">🎵</span><b>TikTok Bot</b><small>Follow &amp; Unfollow + Auto Scroll</small></button>
+    <button class="tool" id="homeZapper"><span class="bigicon">🧼</span><b>Element Zapper</b><small>Remove paywalls &amp; overlays</small></button>
+    <button class="tool" id="homeAutoRefresh"><span class="bigicon">🔄</span><b>Auto Refresh</b><small>Auto reload tab on timer</small></button>
+    <button class="tool" id="homeExtractLinks"><span class="bigicon">🔗</span><b>Extract Links</b><small>Get all URLs on page</small></button>
+    <button class="tool" id="homePassGen"><span class="bigicon">🔐</span><b>Password Gen</b><small>Create secure passwords</small></button>
+    <button class="tool" id="homePip"><span class="bigicon">⧉</span><b>Float Video (PiP)</b><small>Picture-in-picture player</small></button>
+    <button class="tool" id="homeDarkMode"><span class="bigicon">◑</span><b>Smart Dark Mode</b><small>High contrast dark theme</small></button>
     <button class="tool" id="cleanurl"><span class="bigicon">⌁</span><b>Clean URL</b><small>Remove tracking parameters</small></button>
     <button class="tool" id="duplicates"><span class="bigicon">▤</span><b>Duplicate Tabs</b><small>Close duplicate pages</small></button>
     <button class="tool" id="savehtml"><span class="bigicon">⇩</span><b>Save Page</b><small>Download current HTML</small></button>
     <button class="tool" id="print"><span class="bigicon">🖨</span><b>Print / PDF</b><small>Open print dialog</small></button>
     <button class="tool" id="selectionSearch"><span class="bigicon">⌕</span><b>Search Text</b><small>Search selected text</small></button>
-    <button class="tool" id="homePip"><span class="bigicon">⧉</span><b>Float Video (PiP)</b><small>Picture-in-picture player</small></button>
-    <button class="tool" id="homeDarkMode"><span class="bigicon">◑</span><b>Smart Dark Mode</b><small>High contrast dark theme</small></button>
     <button class="tool" id="homeAreaScreenshot"><span class="bigicon">✂</span><b>Custom Screenshot</b><small>Select &amp; crop area</small></button>
   </div>
   <div class="quickrow"><button id="copyUrl" class="widebtn">Copy URL</button><button id="copyTitle" class="widebtn">Copy title</button></div>
@@ -54,7 +61,7 @@
 
 <!-- SOCIAL AUTOMATION PAGE (GITHUB & TIKTOK) -->
 <section id="social" class="page">
-  <div class="section-title">Social Automation Suite</div>
+  <div class="section-title">Social Automation Suite (Auto-Limit Stop)</div>
 
   <div class="subtabs">
     <button id="tabSocialGithub" class="subtab active">🐱 GitHub Bot</button>
@@ -64,8 +71,8 @@
   <!-- GITHUB AUTOMATION VIEW -->
   <div id="socialGithubView">
     <div class="card">
-      <div class="labelrow"><b>GitHub Auto Follow &amp; Unfollow</b><span>Turbo V3</span></div>
-      <small style="color:rgb(140,140,140);margin-bottom:10px;display:block;">Automate following user followers or mass unfollowing with multi-page pagination.</small>
+      <div class="labelrow"><b>GitHub Auto Follow &amp; Unfollow</b><span>Shield Active</span></div>
+      <small style="color:rgb(140,140,140);margin-bottom:10px;display:block;">Automate following user followers or mass unfollowing. <b>Auto-stops immediately if GitHub rate limit is detected!</b></small>
 
       <div style="margin-bottom:8px;">
         <input type="text" id="socialGhUser" class="color-hex" placeholder="GitHub username (e.g. torvalds, your-account)…" style="height:34px;font-size:12px;padding:0 10px;width:100%;">
@@ -77,7 +84,7 @@
       </div>
 
       <div class="hint">
-        💡 <b>How it works on GitHub:</b> Once the page opens, NEXA's floating bot widget will appear at the bottom-right. Select your mode (Follow / Unfollow), pick a speed (Safe 2s / Fast 0.8s / Turbo 0.3s), and click <b>Start</b>!
+        🛡️ <b>Limit Protection:</b> Agar GitHub par limit ya restriction detect hogi toh bot foran khud hi stop ho jayega taake aapka account safe rahe.
       </div>
     </div>
   </div>
@@ -85,8 +92,8 @@
   <!-- TIKTOK AUTOMATION VIEW -->
   <div id="socialTiktokView" style="display:none;">
     <div class="card">
-      <div class="labelrow"><b style="color:#fe2c55;">TikTok Auto Follow &amp; Unfollow</b><span>Scroll V3</span></div>
-      <small style="color:rgb(140,140,140);margin-bottom:10px;display:block;">Automate follow or unfollow on TikTok profiles, followers modals, and search with auto infinite scroll.</small>
+      <div class="labelrow"><b style="color:#fe2c55;">TikTok Auto Follow &amp; Unfollow</b><span>Shield Active</span></div>
+      <small style="color:rgb(140,140,140);margin-bottom:10px;display:block;">Automate follow or unfollow on TikTok with auto-scroll. <b>Auto-stops if TikTok "following too fast" limit is reached!</b></small>
 
       <div style="margin-bottom:8px;">
         <input type="text" id="socialTtUser" class="color-hex" placeholder="TikTok username (@username) or search query…" style="height:34px;font-size:12px;padding:0 10px;width:100%;">
@@ -98,7 +105,7 @@
       </div>
 
       <div class="hint">
-        💡 <b>How it works on TikTok:</b> Open any profile's Followers/Following dialog or search list. NEXA's floating widget will auto-click follow/unfollow and scroll down automatically to load more users!
+        🛡️ <b>Limit Protection:</b> TikTok par "following too fast" ya frequency block aane par bot khud detect karke automatically stop kar dega.
       </div>
     </div>
   </div>
@@ -108,7 +115,6 @@
 <section id="capture" class="page">
   <div class="section-title">Screenshots &amp; Screen Recording</div>
 
-  <!-- Screenshot Card -->
   <div class="card">
     <div class="labelrow"><b>Screenshots</b><span>PNG HD</span></div>
     <div class="toolgrid-3">
@@ -135,7 +141,6 @@
     </div>
   </div>
 
-  <!-- Video Recording Card -->
   <div class="card">
     <div class="labelrow"><b>Screen Video Recorder</b><span>WebM HD</span></div>
     
@@ -144,12 +149,10 @@
       <label class="checkbox-label"><input type="checkbox" id="recMic"> Include Microphone</label>
     </div>
 
-    <!-- Start button -->
     <button id="btnStartRecording" class="primary widebtn rec-start-btn">
       <span class="rec-dot"></span> Start Screen Recording
     </button>
 
-    <!-- Active Recording Panel -->
     <div id="activeRecControls" class="rec-panel" style="display:none;">
       <div class="rec-info">
         <span class="rec-live-badge">● RECORDING</span>
@@ -161,7 +164,6 @@
       </div>
     </div>
 
-    <!-- Finished Recording Preview -->
     <div id="recResultWrap" class="rec-result" style="display:none;margin-top:8px;">
       <video id="recVideoPreview" controls style="width:100%;border-radius:9px;max-height:160px;background:#000;display:block;"></video>
       <div class="quickrow" style="margin-top:8px;">
@@ -183,7 +185,6 @@
     <button id="tabMediaConvert" class="subtab">Image Converter</button>
   </div>
 
-  <!-- VIEW 1: PAGE MEDIA EXTRACTOR -->
   <div id="mediaExtractView">
     <div class="compact-card image-card">
       <div class="imagebar">
@@ -226,19 +227,16 @@
     </div>
   </div>
 
-  <!-- VIEW 2: IMAGE CONVERTER STUDIO -->
   <div id="mediaConvertView" style="display:none;">
     <div class="card">
       <div class="labelrow"><b>Universal Image Converter</b><span>Offline</span></div>
       <small style="color:rgb(130,130,130);margin-bottom:8px;display:block;">Convert between WEBP, PNG, JPG, ICO, and SVG without uploading to any server.</small>
 
-      <!-- Dropzone / File Picker / Paste -->
       <div id="converterDropZone" class="qr-dropzone" style="padding:16px 10px;">
         <span>📁 Drop image here, click to <b>browse file</b>, or press <b>Ctrl+V</b></span>
         <input type="file" id="converterFileInput" accept="image/*" style="display:none;">
       </div>
 
-      <!-- Converter Settings (shown when image loaded) -->
       <div id="converterControls" style="display:none;margin-top:8px;">
         <div class="conv-preview-card">
           <div class="conv-thumb-wrap">
@@ -250,7 +248,6 @@
           </div>
         </div>
 
-        <!-- Target Format Selector -->
         <div class="sub-title" style="margin-top:10px;margin-bottom:4px;">Convert To Target Format:</div>
         <div class="format-grid">
           <button class="format-btn active" data-target-format="png">PNG</button>
@@ -260,13 +257,11 @@
           <button class="format-btn" data-target-format="svg">SVG</button>
         </div>
 
-        <!-- Quality Slider (for JPG & WEBP) -->
         <div id="convQualityWrap" class="card" style="margin-top:8px;padding:9px;display:none;">
           <div class="labelrow"><b>Quality Compression</b><span id="convQualityValue">92%</span></div>
           <input id="convQuality" type="range" min="10" max="100" value="92">
         </div>
 
-        <!-- Resize Presets -->
         <div class="sub-title" style="margin-top:10px;margin-bottom:4px;">Resolution Resize:</div>
         <select id="convResize" style="width:100%;background:#0a0a0a;border:1px solid var(--line2);border-radius:8px;padding:7px;color:#fff;font-size:11px;">
           <option value="original" selected>Original Resolution</option>
@@ -290,9 +285,26 @@
   </div>
 </section>
 
-<!-- DISPLAY CONTROLS PAGE -->
+<!-- DISPLAY & AUDIO BOOST PAGE (600% MAX EXTREME BOOST) -->
 <section id="display" class="page">
-  <div class="section-title">Display &amp; Audio</div>
+  <div class="section-title">Display &amp; Extreme Audio (600% MAX)</div>
+
+  <!-- Extreme Audio Booster Card -->
+  <div class="card" style="border-color:#388bfd;">
+    <div class="labelrow"><b style="color:#58a6ff;">🔊 Extreme Audio Boost</b><span id="volumeValue" style="color:#f0f6fc;font-weight:850;font-size:14px;">100%</span></div>
+    <input id="volume" type="range" min="0" max="600" value="100" step="1" aria-label="Extreme Audio Boost up to 600 percent">
+    
+    <div class="presetrow">
+      <button data-vol="0">Mute</button>
+      <button data-vol="100">100%</button>
+      <button data-vol="200">200%</button>
+      <button data-vol="350">350% 💥</button>
+      <button data-vol="500">500% 🔥</button>
+      <button data-vol="600" style="background:#da3633;color:#ffffff;border-color:#f85149;font-weight:850;">600% MAX ⚡</button>
+    </div>
+    <div class="boostmeter"><span id="boostFill"></span></div>
+    <div class="boostmeta"><span id="boostStatus" style="font-weight:700;">Ready</span><span>MAX 600% (Wall-Shaking)</span></div>
+  </div>
 
   <div class="card">
     <div class="labelrow"><b>Brightness</b><span id="brightValue">100%</span></div>
@@ -312,32 +324,56 @@
     <input id="colorOpacity" type="range" min="0" max="45" value="0" aria-label="Page color strength">
   </div>
 
-  <div class="card">
-    <div class="labelrow"><b>Audio boost</b><span id="volumeValue">100%</span></div>
-    <input id="volume" type="range" min="0" max="2000" value="100" step="1" aria-label="Audio boost up to 2000 percent">
-    <div class="presetrow"><button data-vol="0">Mute</button><button data-vol="100">100%</button><button data-vol="500">500%</button><button data-vol="1000">1000%</button><button data-vol="1500">1500%</button><button data-vol="2000">2000%</button></div>
-    <div class="boostmeter"><span id="boostFill"></span></div>
-    <div class="boostmeta"><span id="boostStatus">Ready</span><span>MAX 2000%</span></div>
-  </div>
-
   <div class="display-actions"><button class="widebtn" id="resetDisplay">Reset</button><button class="primary" id="applyAllDisplay">Apply</button></div>
 </section>
 
-<!-- DEV TOOLS PAGE -->
+<!-- DEV & ADVANCED TOOLS PAGE -->
 <section id="tools" class="page">
-  <div class="section-title">Developer &amp; Text Tools</div>
+  <div class="section-title">Developer &amp; Utility Power Tools</div>
+  
   <div class="mini-grid">
-    <button class="mini-tool" id="pageInfo"><span>ⓘ</span><b>Page Info</b><small>Inspect page details</small></button>
-    <button class="mini-tool" id="source"><span>&lt;/&gt;</span><b>Source</b><small>Open page source</small></button>
+    <button class="mini-tool" id="toolZapper"><span>🧼</span><b>Zapper</b><small>Zap overlays</small></button>
+    <button class="mini-tool" id="toolAutoReload"><span>🔄</span><b>Auto Reload</b><small>Tab timer</small></button>
+    <button class="mini-tool" id="toolLinkExtractor"><span>🔗</span><b>Extract Links</b><small>All page URLs</small></button>
     <button class="mini-tool" id="pageStats"><span>📝</span><b>Text Stats</b><small>Word &amp; read time</small></button>
-    <button class="mini-tool" id="jsonFormat"><span>{ }</span><b>JSON</b><small>Format JSON</small></button>
-    <button class="mini-tool" id="urlDecode"><span>%</span><b>URL Decode</b><small>Decode text</small></button>
-    <button class="mini-tool" id="base64"><span>64</span><b>Base64</b><small>Encode / decode</small></button>
+    <button class="mini-tool" id="toolPassGen"><span>🔐</span><b>Password</b><small>16-char generator</small></button>
+    <button class="mini-tool" id="pageInfo"><span>ⓘ</span><b>Page Info</b><small>Inspect page details</small></button>
   </div>
+
+  <!-- Auto-Refresh Tab Tool Box -->
+  <div id="autoRefreshCard" class="card" style="margin-bottom:8px;">
+    <div class="labelrow"><b>🔄 Auto-Refresh Tab</b><span id="refreshTimerDisplay">Off</span></div>
+    <div style="display:flex;gap:5px;margin-bottom:6px;">
+      <button class="widebtn auto-ref-btn" data-sec="5">5s</button>
+      <button class="widebtn auto-ref-btn" data-sec="15">15s</button>
+      <button class="widebtn auto-ref-btn" data-sec="30">30s</button>
+      <button class="widebtn auto-ref-btn" data-sec="60">60s</button>
+    </div>
+    <div class="quickrow">
+      <button id="btnStartAutoRefresh" class="primary">Start Auto-Refresh</button>
+      <button id="btnStopAutoRefresh" class="widebtn">Stop</button>
+    </div>
+  </div>
+
+  <!-- Password Generator Box -->
+  <div id="passGenCard" class="card" style="margin-bottom:8px;">
+    <div class="labelrow"><b>🔐 Strong Password Generator</b><button id="copyPassBtn" class="linkbtn">Copy</button></div>
+    <div style="display:flex;gap:6px;">
+      <input type="text" id="generatedPassword" readonly class="color-hex" style="flex:1;height:34px;font-family:Consolas,monospace;font-size:12px;padding:0 10px;" placeholder="Click Generate…">
+      <button id="btnGeneratePass" class="primary" style="padding:0 14px;">Generate</button>
+    </div>
+  </div>
+
+  <!-- Developer Code & Conversion Box -->
   <div class="compact-card">
     <div class="devhead"><b>Developer Box</b><button id="clearDev" class="linkbtn">Clear</button></div>
     <textarea id="devBox" class="editor small" placeholder="Paste JSON, URL-encoded text, or normal text…"></textarea>
-    <div class="actions"><button id="encode64">Base64 encode</button><button id="decode64">Base64 decode</button><button id="decodeUrl">URL decode</button><button id="formatJson">Format JSON</button></div>
+    <div class="actions">
+      <button id="encode64">Base64 encode</button>
+      <button id="decode64">Base64 decode</button>
+      <button id="decodeUrl">URL decode</button>
+      <button id="formatJson">Format JSON</button>
+    </div>
   </div>
 </section>
 
@@ -350,7 +386,6 @@
     <button id="tabQrScan" class="subtab">QR Scanner</button>
   </div>
 
-  <!-- QR Generator View -->
   <div id="qrGenView" class="qr-card card">
     <div class="qr-head">
       <div><b>Offline Generator</b><small>Works 100% offline.</small></div>
@@ -365,7 +400,6 @@
     <div class="qr-actions"><button class="primary" id="generateQR">Generate</button><button class="widebtn" id="downloadQR">Download</button><button class="widebtn" id="copyQR">Copy</button></div>
   </div>
 
-  <!-- QR Scanner View -->
   <div id="qrScanView" class="card" style="display:none;">
     <div class="labelrow"><b>QR Code Scanner</b><span>Offline Multi-Scan</span></div>
     
@@ -374,20 +408,17 @@
       <button class="tool" id="scanCameraQR"><span class="bigicon">📷</span><b>Camera Scan</b><small>Live camera viewfinder</small></button>
     </div>
 
-    <!-- Dropzone / File Picker / Paste -->
     <div id="qrDropZone" class="qr-dropzone">
       <span>📁 Drop QR image here, click to <b>browse file</b>, or press <b>Ctrl+V</b> to paste</span>
       <input type="file" id="qrFileInput" accept="image/*" style="display:none;">
     </div>
 
-    <!-- Live Camera Viewfinder -->
     <div id="cameraWrap" class="camera-wrap" style="display:none;">
       <video id="cameraVideo" playsinline autoplay muted></video>
       <div class="camera-laser"></div>
       <button id="stopCamera" class="widebtn" style="margin:7px;">Stop Camera</button>
     </div>
 
-    <!-- Scanned Result Box -->
     <div id="qrScanResult" class="preview-card" style="display:none;">
       <div class="labelrow"><b>Scanned Content</b><button id="clearScanResult" class="linkbtn">Clear</button></div>
       <textarea id="qrResultText" readonly class="editor small" style="min-height:70px;"></textarea>
@@ -426,7 +457,7 @@
   </div>
 </div>
 
-<footer>NEXA Tools Pro · v9.0.0</footer>
+<footer>NEXA Tools Pro · v9.5.0</footer>
 <script src="qrcode-local.js"></script>
 <script src="popup.js"></script>
 </body>

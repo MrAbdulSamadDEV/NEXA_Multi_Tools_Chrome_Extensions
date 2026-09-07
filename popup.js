@@ -3,6 +3,8 @@ let detectedImages = [];
 let activeMediaFilter = "all";
 let isGridView = true;
 let noticeTimer = 0;
+let autoRefreshTimer = null;
+let autoRefreshSec = 0;
 const DISPLAY_STORAGE_KEY = "NEXA_display_settings";
 
 /* ---------------- Notifications & Helpers ---------------- */
@@ -60,7 +62,7 @@ async function copyBlobImage(blob) {
 
 async function pageData() {
   const t = await getTab();
-  return { title: t?.title || "", url: t?.url || "", id: t?.id, windowId: t?.windowId };
+  return { title: t?.title || "", url: t?.url || "", id: t?.id, windowId: t?.windowId, muted: t?.mutedInfo?.muted };
 }
 
 function isCapturableUrl(url) {
@@ -110,6 +112,19 @@ if ($("openSidePanel")) {
   };
 }
 
+// 1-Click Mute Tab Button in Header
+if ($("muteTabBtn")) {
+  $("muteTabBtn").onclick = async () => {
+    try {
+      const tab = await getTab();
+      if (!tab?.id) return;
+      const isMuted = tab.mutedInfo?.muted ?? false;
+      await chrome.tabs.update(tab.id, { muted: !isMuted });
+      msg(!isMuted ? "🔇 Tab audio muted" : "🔊 Tab audio unmuted");
+    } catch (e) { msg("Could not toggle tab mute"); }
+  };
+}
+
 $("copyPage").onclick = async () => { const d = await pageData(); await copyText(`${d.title}\n${d.url}`); };
 $("copyUrl").onclick = async () => { const d = await pageData(); await copyText(d.url); };
 $("copyTitle").onclick = async () => { const d = await pageData(); await copyText(d.title); };
@@ -126,6 +141,41 @@ if ($("homeTiktokBot")) {
     switchToTab("social");
     if ($("tabSocialTiktok")) $("tabSocialTiktok").click();
   };
+}
+
+if ($("homeZapper")) {
+  $("homeZapper").onclick = () => startElementZapper();
+}
+if ($("toolZapper")) {
+  $("toolZapper").onclick = () => startElementZapper();
+}
+
+if ($("homeAutoRefresh")) {
+  $("homeAutoRefresh").onclick = () => {
+    switchToTab("tools");
+    $("autoRefreshCard")?.scrollIntoView({ behavior: "smooth" });
+  };
+}
+if ($("toolAutoReload")) {
+  $("toolAutoReload").onclick = () => {
+    $("autoRefreshCard")?.scrollIntoView({ behavior: "smooth" });
+  };
+}
+
+if ($("homePassGen") || $("toolPassGen")) {
+  const handler = () => {
+    switchToTab("tools");
+    generateSecurePassword();
+    $("passGenCard")?.scrollIntoView({ behavior: "smooth" });
+  };
+  if ($("homePassGen")) $("homePassGen").onclick = handler;
+  if ($("toolPassGen")) $("toolPassGen").onclick = handler;
+}
+
+if ($("homeExtractLinks") || $("toolLinkExtractor")) {
+  const handler = () => extractAllPageLinks();
+  if ($("homeExtractLinks")) $("homeExtractLinks").onclick = handler;
+  if ($("toolLinkExtractor")) $("toolLinkExtractor").onclick = handler;
 }
 
 $("cleanurl").onclick = async () => {
@@ -234,6 +284,241 @@ if ($("homeAreaScreenshot")) {
 }
 
 /* ================================================================
+   NEW POWER TOOLS (ELEMENT ZAPPER, AUTO-REFRESH, LINK EXTRACTOR, PASSWORD GEN)
+   ================================================================ */
+
+// 1. Element Zapper (Anti-Paywall, Overlay & Banner Remover)
+async function startElementZapper() {
+  try {
+    const tab = await getTab();
+    if (!tab?.id || !isCapturableUrl(tab.url)) {
+      return msg("Element Zapper is unavailable on this page.");
+    }
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: initElementZapperScript
+    });
+    msg("Element Zapper Active! Hover & click to delete any element.");
+    window.close();
+  } catch (err) {
+    msg(friendlyError(err, "Could not start Element Zapper"));
+  }
+}
+
+function initElementZapperScript() {
+  if (document.getElementById("__nexa_zapper_bar")) {
+    document.getElementById("__nexa_zapper_bar").remove();
+  }
+
+  const bar = document.createElement("div");
+  bar.id = "__nexa_zapper_bar";
+  bar.style.cssText = `
+    position: fixed !important;
+    top: 14px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    background: #111111 !important;
+    color: #ffffff !important;
+    padding: 8px 18px !important;
+    border-radius: 99px !important;
+    border: 1px solid #da3633 !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.8) !important;
+    font: 12.5px -apple-system, system-ui, sans-serif !important;
+    z-index: 2147483647 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    user-select: none !important;
+  `;
+  bar.innerHTML = `
+    <span>🧼 <b>Element Zapper Active</b>: Click element to remove</span>
+    <button id="__nexa_zapper_exit" style="background:#21262d;border:1px solid #30363d;color:#fff;border-radius:6px;padding:3px 8px;cursor:pointer;font-size:11px;">Exit (ESC)</button>
+  `;
+  document.documentElement.appendChild(bar);
+
+  let currentTarget = null;
+
+  function onMouseOver(e) {
+    if (e.target.closest("#__nexa_zapper_bar")) return;
+    if (currentTarget && currentTarget !== e.target) {
+      currentTarget.style.outline = "";
+      currentTarget.style.backgroundColor = "";
+    }
+    currentTarget = e.target;
+    currentTarget.style.outline = "2px dashed #da3633";
+    currentTarget.style.backgroundColor = "rgba(218, 54, 51, 0.15)";
+  }
+
+  function onMouseOut(e) {
+    if (e.target === currentTarget) {
+      currentTarget.style.outline = "";
+      currentTarget.style.backgroundColor = "";
+      currentTarget = null;
+    }
+  }
+
+  function onClick(e) {
+    if (e.target.closest("#__nexa_zapper_bar")) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (currentTarget) {
+      currentTarget.style.outline = "";
+      currentTarget.style.backgroundColor = "";
+      currentTarget.remove();
+      currentTarget = null;
+      // Unlock page scrolling if paywall locked it
+      document.body.style.overflow = "auto";
+      document.documentElement.style.overflow = "auto";
+    }
+  }
+
+  function cleanup() {
+    window.removeEventListener("mouseover", onMouseOver, true);
+    window.removeEventListener("mouseout", onMouseOut, true);
+    window.removeEventListener("click", onClick, true);
+    window.removeEventListener("keydown", onKeyDown, true);
+    if (currentTarget) {
+      currentTarget.style.outline = "";
+      currentTarget.style.backgroundColor = "";
+    }
+    const b = document.getElementById("__nexa_zapper_bar");
+    if (b) b.remove();
+  }
+
+  function onKeyDown(e) {
+    if (e.key === "Escape") cleanup();
+  }
+
+  window.addEventListener("mouseover", onMouseOver, true);
+  window.addEventListener("mouseout", onMouseOut, true);
+  window.addEventListener("click", onClick, true);
+  window.addEventListener("keydown", onKeyDown, true);
+  document.getElementById("__nexa_zapper_exit").onclick = cleanup;
+}
+
+// 2. Auto-Refresh Tab Tool
+let selectedRefreshInterval = 15;
+
+document.querySelectorAll(".auto-ref-btn").forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll(".auto-ref-btn").forEach(b => b.classList.remove("primary"));
+    btn.classList.add("primary");
+    selectedRefreshInterval = parseInt(btn.dataset.sec, 10);
+    msg(`Auto-refresh interval set to ${selectedRefreshInterval}s`);
+  };
+});
+
+if ($("btnStartAutoRefresh")) {
+  $("btnStartAutoRefresh").onclick = async () => {
+    try {
+      const tab = await getTab();
+      if (!tab?.id || !isCapturableUrl(tab.url)) return msg("Auto-refresh unavailable on this page");
+
+      clearInterval(autoRefreshTimer);
+      autoRefreshSec = selectedRefreshInterval;
+      $("refreshTimerDisplay").textContent = `${autoRefreshSec}s`;
+
+      autoRefreshTimer = setInterval(async () => {
+        autoRefreshSec--;
+        if ($("refreshTimerDisplay")) $("refreshTimerDisplay").textContent = `${autoRefreshSec}s`;
+        if (autoRefreshSec <= 0) {
+          autoRefreshSec = selectedRefreshInterval;
+          await chrome.tabs.reload(tab.id);
+        }
+      }, 1000);
+
+      msg(`Auto-refresh active every ${selectedRefreshInterval}s!`);
+    } catch (e) { msg("Could not start auto-refresh"); }
+  };
+}
+
+if ($("btnStopAutoRefresh")) {
+  $("btnStopAutoRefresh").onclick = () => {
+    clearInterval(autoRefreshTimer);
+    if ($("refreshTimerDisplay")) $("refreshTimerDisplay").textContent = "Off";
+    msg("Auto-refresh stopped");
+  };
+}
+
+// 3. Extract All Page Links
+async function extractAllPageLinks() {
+  try {
+    msg("Scanning all links on page…");
+    const res = await inject(() => {
+      const links = Array.from(document.querySelectorAll("a[href]")).map(a => ({
+        text: (a.innerText || a.textContent || "").trim() || "Link",
+        url: a.href
+      })).filter(l => /^https?:/i.test(l.url));
+
+      const unique = [];
+      const seen = new Set();
+      for (const item of links) {
+        if (!seen.has(item.url)) {
+          seen.add(item.url);
+          unique.push(item);
+        }
+      }
+      return unique;
+    });
+
+    const list = res?.[0]?.result || [];
+    if (!list.length) return msg("No links found on this page");
+
+    switchToTab("tools");
+    const devBox = $("devBox");
+    if (devBox) {
+      devBox.value = list.map(l => `${l.text} -> ${l.url}`).join("\n");
+      devBox.focus();
+    }
+
+    const tab = await getTab();
+    const title = safeName(tab?.title || "page");
+    const textBlob = new Blob([list.map(l => l.url).join("\n")], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(textBlob);
+    await chrome.downloads.download({
+      url,
+      filename: `NEXA/Links/Links_${title}.txt`,
+      saveAs: false,
+      conflictAction: "uniquify"
+    });
+
+    msg(`${list.length} unique links extracted & saved to Downloads!`);
+  } catch (err) {
+    msg(friendlyError(err, "Could not extract links from this page"));
+  }
+}
+
+// 4. Strong Password Generator
+function generateSecurePassword(length = 16) {
+  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?";
+  const arr = new Uint32Array(length);
+  window.crypto.getRandomValues(arr);
+  let pass = "";
+  for (let i = 0; i < length; i++) {
+    pass += chars[arr[i] % chars.length];
+  }
+  if ($("generatedPassword")) {
+    $("generatedPassword").value = pass;
+  }
+  return pass;
+}
+
+if ($("btnGeneratePass")) {
+  $("btnGeneratePass").onclick = () => {
+    const p = generateSecurePassword();
+    msg("New secure password generated!");
+  };
+}
+
+if ($("copyPassBtn")) {
+  $("copyPassBtn").onclick = () => {
+    const val = $("generatedPassword")?.value || "";
+    if (!val) return msg("Generate a password first");
+    copyText(val);
+  };
+}
+
+/* ================================================================
    SOCIAL AUTOMATION SUITE (GITHUB & TIKTOK)
    ================================================================ */
 if ($("tabSocialGithub") && $("tabSocialTiktok")) {
@@ -251,7 +536,6 @@ if ($("tabSocialGithub") && $("tabSocialTiktok")) {
   };
 }
 
-// GitHub Button Handlers
 function cleanGhUser() {
   let u = $("socialGhUser")?.value.trim().replace(/^@/, "") || "";
   if (u.includes("github.com/")) {
@@ -283,7 +567,6 @@ if ($("btnOpenGhFollowing")) {
   };
 }
 
-// TikTok Button Handlers
 if ($("btnOpenTtProfile")) {
   $("btnOpenTtProfile").onclick = () => {
     let val = $("socialTtUser")?.value.trim() || "";
@@ -564,7 +847,7 @@ function initAreaSelectionOverlay() {
   document.documentElement.appendChild(overlay);
 }
 
-/* 3. Full Page Screenshot (Safe Rate-Limit & Dimensions) */
+/* 3. Full Page Screenshot */
 async function captureFullPageScreenshot() {
   const tab = await getTab();
   if (!tab?.id || !isCapturableUrl(tab.url)) {
@@ -926,10 +1209,9 @@ if ($("btnNewRecording")) {
 }
 
 /* ================================================================
-   MEDIA & CONVERTER STUDIO (PAGE MEDIA + IMAGE CONVERTER)
+   MEDIA & CONVERTER STUDIO
    ================================================================ */
 
-// Subtabs for Media
 if ($("tabMediaExtract") && $("tabMediaConvert")) {
   $("tabMediaExtract").onclick = () => {
     $("tabMediaExtract").classList.add("active");
@@ -945,7 +1227,6 @@ if ($("tabMediaExtract") && $("tabMediaConvert")) {
   };
 }
 
-// View toggle (Grid vs List)
 if ($("viewGrid") && $("viewList")) {
   $("viewGrid").onclick = () => {
     isGridView = true;
@@ -1182,7 +1463,6 @@ function renderFilteredMedia() {
   });
 }
 
-/* --- Image Preview Lightbox Modal --- */
 let activeModalItem = null;
 
 function openImagePreviewModal(item) {
@@ -1228,7 +1508,6 @@ window.addEventListener("keydown", e => {
   if (e.key === "Escape") closeImageModal();
 });
 
-/* --- Batch / Custom Download --- */
 async function downloadMediaList(indices) {
   const unique = [...new Set(indices)].filter(i => detectedImages[i]);
   if (!unique.length) return msg("Select at least one item to download");
@@ -1286,7 +1565,7 @@ document.querySelectorAll(".pill[data-filter]").forEach(pill => {
 });
 
 /* ================================================================
-   UNIVERSAL IMAGE CONVERTER (WEBP / JPG / PNG / ICO / SVG)
+   UNIVERSAL IMAGE CONVERTER
    ================================================================ */
 let converterSourceImage = null;
 let converterSourceDataUrl = null;
@@ -1474,7 +1753,7 @@ async function createIcoFromPngBlob(pngBlob, width, height) {
 if ($("btnDownloadConverted")) $("btnDownloadConverted").onclick = convertAndDownloadImage;
 
 /* ================================================================
-   DISPLAY CONTROLS & AUDIO BOOST
+   DISPLAY CONTROLS & EXTREME 600% AUDIO BOOST (WALL-SHAKING LOUDNESS)
    ================================================================ */
 async function saveDisplaySettings() {
   try {
@@ -1495,7 +1774,7 @@ async function restoreDisplaySettings() {
     const s = data?.[DISPLAY_STORAGE_KEY];
     if (!s) return;
     if ($("brightness")) $("brightness").value = Math.max(40, Math.min(160, Number(s.brightness) || 100));
-    if ($("volume")) $("volume").value = Math.max(0, Math.min(2000, Number(s.volume) || 100));
+    if ($("volume")) $("volume").value = Math.max(0, Math.min(600, Number(s.volume) || 100));
     if ($("colorOpacity")) $("colorOpacity").value = Math.max(0, Math.min(45, Number(s.colorOpacity) || 0));
     syncColorInputs(s.color || "#ffffff");
     $("brightness")?.dispatchEvent(new Event("input"));
@@ -1608,65 +1887,145 @@ $("applyAllDisplay").onclick = async () => {
   msg("Current display settings applied");
 };
 
+// 600% Extreme Loudness DSP Engine
 $("volume").oninput = async e => {
-  const v = Math.max(0, Math.min(2000, Number(e.target.value)));
+  const v = Math.max(0, Math.min(600, Number(e.target.value)));
   $("volumeValue").textContent = v + "%";
   saveDisplaySettings();
-  if ($("boostFill")) $("boostFill").style.width = Math.max(0, Math.min(100, v / 20)) + "%";
+  if ($("boostFill")) $("boostFill").style.width = Math.max(0, Math.min(100, v / 6)) + "%";
   if ($("boostStatus")) $("boostStatus").textContent =
-    v >= 2000 ? "2000% Extreme · Peak-safe limiter" :
-    v >= 1000 ? `${v}% Extreme · Dynamic protection` :
-    v > 100 ? `${v}% Ultra · Dynamic protection` :
-    "Protected mode · Peak-safe";
+    v >= 600 ? "600% EXTREME (Wall-Shaking) 🔥" :
+    v >= 450 ? `${v}% Super Loud · Bass punch` :
+    v >= 200 ? `${v}% High Boost · Dynamic limiter` :
+    v > 100 ? `${v}% Boosted · Clear sound` :
+    v === 100 ? "100% Normal Volume" :
+    v === 0 ? "Muted (0%)" : `${v}%`;
+
   try {
     const result = await inject(async percent => {
       const media = [...document.querySelectorAll("audio,video")];
-      if (!media.length) return { count: 0, boosted: 0, fallback: 0 };
-      let boosted = 0, fallback = 0;
-      const p = Math.max(0, Math.min(2000, Number(percent) || 0));
+      if (!media.length) return { count: 0, boosted: 0 };
+      let boosted = 0;
+      const p = Math.max(0, Math.min(600, Number(percent) || 0));
+
       for (const el of media) {
         try {
-          let q = el.__qtUltraAudio;
+          let q = el.__nexaSuperAudio;
           if (!q) {
             const AudioCtx = window.AudioContext || window.webkitAudioContext;
             if (!AudioCtx) throw new Error("Web Audio unavailable");
-            const ctx = new AudioCtx(), source = ctx.createMediaElementSource(el);
+            const ctx = new AudioCtx();
+            const source = ctx.createMediaElementSource(el);
+
+            // 1. Sub-bass punch EQ (makes sound hit hard)
+            const bass = ctx.createBiquadFilter();
+            bass.type = "lowshelf";
+            bass.frequency.value = 130;
+            bass.gain.value = 0;
+
+            // 2. High-mid clarity EQ (makes vocals/speech cut through walls)
+            const presence = ctx.createBiquadFilter();
+            presence.type = "peaking";
+            presence.frequency.value = 2800;
+            presence.Q.value = 1.0;
+            presence.gain.value = 0;
+
+            // 3. Pre-amp gain
             const pre = ctx.createGain();
-            const fast = ctx.createDynamicsCompressor();
-            const slow = ctx.createDynamicsCompressor();
+
+            // 4. Punch compressor
+            const comp1 = ctx.createDynamicsCompressor();
+            comp1.threshold.value = -24;
+            comp1.knee.value = 12;
+            comp1.ratio.value = 12;
+            comp1.attack.value = 0.002;
+            comp1.release.value = 0.08;
+
+            // 5. Density compressor
+            const comp2 = ctx.createDynamicsCompressor();
+            comp2.threshold.value = -30;
+            comp2.knee.value = 18;
+            comp2.ratio.value = 8;
+            comp2.attack.value = 0.01;
+            comp2.release.value = 0.25;
+
+            // 6. Makeup gain
             const makeup = ctx.createGain();
+
+            // 7. Saturation Waveshaper (prevents silent digital clipping)
+            const shaper = ctx.createWaveShaper();
+            const curve = new Float32Array(4096);
+            for (let i = 0; i < 4096; i++) {
+              const x = (i * 2) / 4096 - 1;
+              curve[i] = Math.tanh(x * 1.5);
+            }
+            shaper.curve = curve;
+            shaper.oversample = "4x";
+
+            // 8. Output brickwall limiter
             const limiter = ctx.createDynamicsCompressor();
-            const output = ctx.createGain();
-            fast.threshold.value = -24; fast.knee.value = 18; fast.ratio.value = 8; fast.attack.value = .002; fast.release.value = .10;
-            slow.threshold.value = -30; slow.knee.value = 24; slow.ratio.value = 6; slow.attack.value = .012; slow.release.value = .32;
-            limiter.threshold.value = -1.2; limiter.knee.value = 1.5; limiter.ratio.value = 30; limiter.attack.value = .001; limiter.release.value = .065;
-            source.connect(pre).connect(fast).connect(slow).connect(makeup).connect(limiter).connect(output).connect(ctx.destination);
-            q = el.__qtUltraAudio = { ctx, pre, fast, slow, makeup, limiter, output };
+            limiter.threshold.value = -0.5;
+            limiter.knee.value = 0.5;
+            limiter.ratio.value = 40;
+            limiter.attack.value = 0.0005;
+            limiter.release.value = 0.04;
+
+            const out = ctx.createGain();
+
+            source
+              .connect(bass)
+              .connect(presence)
+              .connect(pre)
+              .connect(comp1)
+              .connect(comp2)
+              .connect(makeup)
+              .connect(shaper)
+              .connect(limiter)
+              .connect(out)
+              .connect(ctx.destination);
+
+            q = el.__nexaSuperAudio = { ctx, bass, presence, pre, comp1, comp2, makeup, shaper, limiter, out };
           }
+
           if (q.ctx.state === "suspended") await q.ctx.resume();
+
           if (p === 0) {
-            q.pre.gain.value = 0; q.makeup.gain.value = 0; q.output.gain.value = 1; el.volume = 0;
+            q.pre.gain.value = 0;
+            q.makeup.gain.value = 0;
+            q.out.gain.value = 0;
+            el.volume = 0;
           } else {
-            const x = p / 100;
-            q.pre.gain.value = Math.min(24, Math.pow(x, .72));
-            q.makeup.gain.value = Math.min(8, .72 + Math.log10(Math.max(1, x)) * 2.4);
-            q.output.gain.value = .98;
+            const factor = p / 100;
+            // Progressive bass & presence EQ for wall-shaking loudness
+            q.bass.gain.value = factor > 1 ? Math.min(8, (factor - 1) * 2.2) : 0;
+            q.presence.gain.value = factor > 1 ? Math.min(6, (factor - 1) * 1.8) : 0;
+
+            // Drive stages
+            q.pre.gain.value = Math.min(18, Math.pow(factor, 1.15) * 2.2);
+            q.makeup.gain.value = Math.min(8, 1.0 + (factor - 1) * 1.4);
+            q.out.gain.value = 1.0;
             el.volume = 1;
           }
           boosted++;
-        } catch (_) { try { el.volume = p === 0 ? 0 : 1; fallback++; } catch (_) {} }
+        } catch (_) {
+          try { el.volume = p === 0 ? 0 : 1; } catch (_) {}
+        }
       }
-      return { count: media.length, boosted, fallback };
+      return { count: media.length, boosted };
     }, [v]);
+
     const data = result?.[0]?.result;
     if (!data?.count) msg("No audio or video found on this page");
-    else if (v >= 1000 && data.boosted > 0) msg(`${v}% Ultra Audio Boost active — compressor + peak limiter on`);
-    else if (v > 100 && data.boosted > 0) msg(`${v}% Ultra Audio Boost active — peak protection on`);
+    else if (v >= 500 && data.boosted > 0) msg(`⚡ ${v}% EXTREME BOOST Active! Neighbors can hear it now!`);
+    else if (v > 100 && data.boosted > 0) msg(`🔊 ${v}% Audio Boost Active`);
     else if (v <= 100) msg(v === 0 ? "Audio muted" : `Audio set to ${v}%`);
-    else msg("This site player does not allow clean Web Audio boosting");
   } catch (e) { msg(friendlyError(e, "Audio control is unavailable on this page.")); }
 };
-document.querySelectorAll("[data-vol]").forEach(b => b.onclick = () => { $("volume").value = b.dataset.vol; $("volume").dispatchEvent(new Event("input")); });
+
+document.querySelectorAll("[data-vol]").forEach(b => b.onclick = () => {
+  $("volume").value = b.dataset.vol;
+  $("volume").dispatchEvent(new Event("input"));
+});
 
 /* ---------------- Developer Tools & Text Stats ---------------- */
 $("pageInfo").onclick = async () => {
@@ -1685,14 +2044,6 @@ $("pageInfo").onclick = async () => {
     try { const d = await pageData(); alert(`Title: ${d.title}\nURL: ${d.url}`); }
     catch (_) { msg("Page information is unavailable."); }
   }
-};
-
-$("source").onclick = async () => {
-  try {
-    const d = await pageData();
-    if (!d.url || !/^https?:/i.test(d.url)) throw new Error("Source unavailable");
-    await chrome.tabs.create({ url: "view-source:" + d.url });
-  } catch (e) { msg("Source is unavailable for this page."); }
 };
 
 if ($("pageStats")) {
@@ -1724,7 +2075,6 @@ $("urlDecode").onclick = () => { try { $("devBox").value = decodeURIComponent($(
 $("decodeUrl").onclick = $("urlDecode").onclick;
 $("encode64").onclick = () => { try { $("devBox").value = b64enc($("devBox").value); msg("Base64 encoded"); } catch (_) { msg("Could not encode text"); } };
 $("decode64").onclick = () => { try { $("devBox").value = b64dec($("devBox").value); msg("Base64 decoded"); } catch (_) { msg("Invalid Base64 text"); } };
-$("base64").onclick = () => { $("devBox").focus(); };
 $("clearDev").onclick = () => { $("devBox").value = ""; msg("Developer box cleared"); };
 
 /* ================================================================
@@ -1747,7 +2097,6 @@ if ($("tabQrGen") && $("tabQrScan")) {
   };
 }
 
-/* --- QR Generator --- */
 let qrCanvas = null;
 
 function buildQRCanvas(text, requestedSize) {
@@ -1930,7 +2279,6 @@ if ($("clearScanResult")) {
   };
 }
 
-// 1. Scan Screen / Active Tab
 $("scanScreenQR").onclick = async () => {
   try {
     msg("Capturing screen to scan QR…");
@@ -1959,13 +2307,11 @@ $("scanScreenQR").onclick = async () => {
   }
 };
 
-// 2. Dropzone & File Input & Clipboard Paste
 const dropZone = $("qrDropZone");
 const fileInput = $("qrFileInput");
 
 if (dropZone && fileInput) {
   dropZone.onclick = () => fileInput.click();
-
   dropZone.ondragover = e => { e.preventDefault(); dropZone.classList.add("dragover"); };
   dropZone.ondragleave = () => dropZone.classList.remove("dragover");
   dropZone.ondrop = e => {
@@ -1973,7 +2319,6 @@ if (dropZone && fileInput) {
     dropZone.classList.remove("dragover");
     if (e.dataTransfer?.files?.[0]) scanQRFile(e.dataTransfer.files[0]);
   };
-
   fileInput.onchange = e => {
     if (e.target.files?.[0]) scanQRFile(e.target.files[0]);
   };
@@ -2023,7 +2368,6 @@ function scanQRFile(file) {
   reader.readAsDataURL(file);
 }
 
-// 3. Camera / Webcam Scanner
 let cameraStream = null;
 let cameraScanning = false;
 

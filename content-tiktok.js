@@ -1,11 +1,12 @@
 /**
- * Social Auto Bot Pro - TikTok Module
- * Handles Auto Follow & Auto Unfollow on TikTok profiles, modals, and search pages with Infinite Scroll.
+ * NEXA Tools Pro - TikTok Automation Module
+ * Handles Auto Follow & Auto Unfollow with Rate Limit Auto-Stop, Infinite Scroll, and Speed Controls.
  */
 
 (function () {
   let isRunning = false;
   let currentMode = "follow"; // "follow" or "unfollow"
+  let consecutiveFailures = 0;
 
   function isElementVisible(el) {
     if (!el) return false;
@@ -17,9 +18,43 @@
     );
   }
 
-  // Find scrollable container (TikTok modal list or window)
+  // Detect TikTok Rate Limit or Action Block
+  function checkTikTokRateLimit() {
+    // 1. Check floating toast alerts
+    const toasts = document.querySelectorAll('div[class*="Toast"], div[role="status"], div[class*="DivToastContainer"], div[class*="Notification"]');
+    for (const t of toasts) {
+      if (!isElementVisible(t)) continue;
+      const text = (t.innerText || t.textContent || "").toLowerCase();
+      if (
+        text.includes("following too fast") ||
+        text.includes("too fast") ||
+        text.includes("try again later") ||
+        text.includes("limit") ||
+        text.includes("blocked") ||
+        text.includes("unusual activity") ||
+        text.includes("unable to follow")
+      ) {
+        return "TikTok Limit: " + text.slice(0, 60);
+      }
+    }
+
+    // 2. Check modal error dialogs
+    const dialogs = document.querySelectorAll('div[role="dialog"]');
+    for (const d of dialogs) {
+      const text = (d.innerText || d.textContent || "").toLowerCase();
+      if (
+        text.includes("following too fast") ||
+        text.includes("action blocked") ||
+        text.includes("frequency limit")
+      ) {
+        return "TikTok Action Blocked";
+      }
+    }
+
+    return null;
+  }
+
   function getScrollContainer() {
-    // 1. Check for modal user list
     const modalContainers = document.querySelectorAll('div[role="dialog"] div, div[class*="DivUserListContainer"], div[class*="DivModalContainer"]');
     for (const c of modalContainers) {
       const style = window.getComputedStyle(c);
@@ -27,12 +62,10 @@
         return c;
       }
     }
-    // 2. Check any modal body
     const dialog = document.querySelector('div[role="dialog"]');
     if (dialog && dialog.scrollHeight > dialog.clientHeight) {
       return dialog;
     }
-    // 3. Fallback: window
     return window;
   }
 
@@ -46,14 +79,12 @@
       const text = (btn.innerText || btn.textContent || "").trim().toLowerCase();
 
       if (mode === "follow") {
-        // Must match "follow" or "follow back", but NOT "following" or "friends" or "requested"
         const isFollow = text === "follow" || text === "follow back" || text === "+ follow";
         const notFollowing = !text.includes("following") && !text.includes("friends") && !text.includes("requested") && !text.includes("message");
         if (isFollow && notFollowing) {
           list.push(btn);
         }
       } else {
-        // Unfollow Mode: target "following" or "friends"
         const isFollowing = text === "following" || text === "friends";
         if (isFollowing) {
           list.push(btn);
@@ -64,7 +95,6 @@
     return list;
   }
 
-  // Handle TikTok confirmation modal if it asks "Unfollow username?"
   async function handleUnfollowConfirmModal() {
     await new Promise((r) => setTimeout(r, 350));
     const confirmButtons = document.querySelectorAll('div[role="dialog"] button, div[class*="Modal"] button');
@@ -301,6 +331,7 @@
 
     startBtn.onclick = () => {
       sessionStorage.setItem("tt_sab_active", "1");
+      consecutiveFailures = 0;
       runTikTokAutomation();
     };
 
@@ -360,9 +391,27 @@
     let total = parseInt(sessionStorage.getItem("tt_sab_count") || "0", 10);
     let consecutiveEmptyCount = 0;
 
+    // Check rate limit before beginning
+    const initialToast = checkTikTokRateLimit();
+    if (initialToast) {
+      statusSpan.textContent = "⚠️ TikTok Limit Hit! Auto-stopped.";
+      statusSpan.style.color = "#fe2c55";
+      haltTikTokAutomation("TikTok Limit Hit");
+      return;
+    }
+
     while (isRunning && sessionStorage.getItem("tt_sab_active") === "1") {
       statusSpan.textContent = "Scanning TikTok…";
       statusSpan.style.color = "#25f4ee";
+
+      // Check TikTok rate limit toast
+      const rateLimitMsg = checkTikTokRateLimit();
+      if (rateLimitMsg) {
+        statusSpan.textContent = "⚠️ Limit Reached! Auto-stopped for safety.";
+        statusSpan.style.color = "#fe2c55";
+        haltTikTokAutomation("Rate Limit Reached");
+        break;
+      }
 
       const buttons = getTargetButtons(currentMode);
 
@@ -372,6 +421,14 @@
         for (let i = 0; i < buttons.length; i++) {
           if (!isRunning || sessionStorage.getItem("tt_sab_active") !== "1") break;
 
+          const limitAlert = checkTikTokRateLimit();
+          if (limitAlert) {
+            statusSpan.textContent = "⚠️ Limit Hit! Auto-stopped.";
+            statusSpan.style.color = "#fe2c55";
+            haltTikTokAutomation("TikTok Limit");
+            return;
+          }
+
           const btn = buttons[i];
           statusSpan.textContent = `${currentMode === "follow" ? "Following" : "Unfollowing"} ${i + 1}/${buttons.length}…`;
           statusSpan.style.color = currentMode === "follow" ? "#25f4ee" : "#fe2c55";
@@ -379,7 +436,6 @@
           btn.scrollIntoView({ behavior: "auto", block: "center" });
           btn.click();
 
-          // In unfollow mode, check if confirm modal appears
           if (currentMode === "unfollow") {
             await handleUnfollowConfirmModal();
           }
@@ -393,12 +449,25 @@
           } catch (_) {
             break;
           }
+
+          // Check if button reverted (shadow limit detection)
+          const textAfter = (btn.innerText || btn.textContent || "").trim().toLowerCase();
+          if (currentMode === "follow" && (textAfter === "follow" || textAfter === "+ follow")) {
+            consecutiveFailures++;
+            if (consecutiveFailures >= 3) {
+              statusSpan.textContent = "⚠️ TikTok Follow Limit Reached! Auto-stopped.";
+              statusSpan.style.color = "#fe2c55";
+              haltTikTokAutomation("Limit Reached");
+              return;
+            }
+          } else {
+            consecutiveFailures = 0;
+          }
         }
       } else {
         consecutiveEmptyCount++;
       }
 
-      // Check if we should scroll down to load more
       if (isRunning && sessionStorage.getItem("tt_sab_active") === "1" && autoScrollCheck.checked) {
         if (consecutiveEmptyCount >= 4) {
           statusSpan.textContent = "All visible accounts processed! 🎉";
@@ -417,7 +486,6 @@
           scroller.scrollTop += 700;
         }
 
-        // Wait for TikTok to load new DOM elements
         try {
           await waitInterval(1200);
         } catch (_) {

@@ -1,11 +1,12 @@
 /**
- * Social Auto Bot Pro - GitHub Module
- * Handles Auto Follow & Auto Unfollow with Turbo/SPA, Pagination, and Speed Presets.
+ * NEXA Tools Pro - GitHub Automation Module
+ * Handles Auto Follow & Auto Unfollow with Rate Limit Auto-Stop, Turbo/SPA, Pagination, and Speed Presets.
  */
 
 (function () {
   let isRunning = false;
   let currentMode = "follow"; // "follow" or "unfollow"
+  let consecutiveFailures = 0;
 
   function isGitHubUserListPage() {
     const s = window.location.search.toLowerCase();
@@ -28,6 +29,40 @@
       style.visibility !== "hidden" &&
       (el.offsetWidth > 0 || el.offsetHeight > 0 || el.getClientRects().length > 0)
     );
+  }
+
+  // GitHub Follow Limit / Rate Limit Detection
+  function checkGitHubRateLimit() {
+    // 1. Check flash error banners
+    const flashMessages = document.querySelectorAll(
+      '.flash-error, .flash-warn, .js-flash-alert, div[class*="flash"][class*="error"], div[role="alert"]'
+    );
+    for (const el of flashMessages) {
+      if (!isElementVisible(el)) continue;
+      const text = (el.innerText || el.textContent || "").toLowerCase();
+      if (
+        text.includes("rate limit") ||
+        text.includes("too fast") ||
+        text.includes("cannot follow") ||
+        text.includes("abuse") ||
+        text.includes("limit reached") ||
+        text.includes("try again later") ||
+        text.includes("blocked")
+      ) {
+        return "GitHub Limit Detected: " + text.slice(0, 70);
+      }
+    }
+
+    // 2. Check for disabled action buttons with error hints
+    const disabledButtons = document.querySelectorAll('button[disabled], input[type="submit"][disabled]');
+    for (const btn of disabledButtons) {
+      const tip = (btn.getAttribute("aria-label") || btn.getAttribute("title") || "").toLowerCase();
+      if (tip.includes("limit") || tip.includes("blocked") || tip.includes("unable to follow")) {
+        return "Action Restricted by GitHub";
+      }
+    }
+
+    return null;
   }
 
   function getTargetButtons(mode) {
@@ -334,6 +369,7 @@
 
     startBtn.onclick = () => {
       sessionStorage.setItem("gh_sab_active", "1");
+      consecutiveFailures = 0;
       runAutomation();
     };
 
@@ -393,6 +429,15 @@
     if (isNaN(delaySec) || delaySec < 0.1) delaySec = 0.5;
     const delayMs = delaySec * 1000;
 
+    // Check rate limit before starting
+    const initialLimitReason = checkGitHubRateLimit();
+    if (initialLimitReason) {
+      statusSpan.textContent = "⚠️ Limit detected! Auto-stopped.";
+      statusSpan.style.color = "#f85149";
+      haltAutomation("Rate Limit Reached");
+      return;
+    }
+
     const buttons = getTargetButtons(currentMode);
     let total = parseInt(sessionStorage.getItem("gh_sab_count") || "0", 10);
 
@@ -402,6 +447,15 @@
     } else {
       for (let i = 0; i < buttons.length; i++) {
         if (!isRunning || sessionStorage.getItem("gh_sab_active") !== "1") break;
+
+        // Check rate limit continuously
+        const limitAlert = checkGitHubRateLimit();
+        if (limitAlert) {
+          statusSpan.textContent = "⚠️ Limit Hit! Auto-stopped for safety.";
+          statusSpan.style.color = "#f85149";
+          haltAutomation("Rate Limit Hit");
+          return;
+        }
 
         const btn = buttons[i];
         statusSpan.textContent = `${currentMode === "follow" ? "Following" : "Unfollowing"} ${i + 1}/${buttons.length}…`;
@@ -418,6 +472,20 @@
           await waitInterval(delayMs);
         } catch (_) {
           break;
+        }
+
+        // Verify button state changed (if it still has same state after delay, increment failure)
+        const updatedText = (btn.value || btn.textContent || "").trim().toLowerCase();
+        if (currentMode === "follow" && updatedText.includes("follow") && !updatedText.includes("unfollow")) {
+          consecutiveFailures++;
+          if (consecutiveFailures >= 3) {
+            statusSpan.textContent = "⚠️ Follow Limit Hit! Auto-stopped.";
+            statusSpan.style.color = "#f85149";
+            haltAutomation("Limit Reached");
+            return;
+          }
+        } else {
+          consecutiveFailures = 0;
         }
       }
     }
@@ -464,7 +532,7 @@
 
     if (statusSpan) {
       statusSpan.textContent = msg;
-      statusSpan.style.color = msg === "Completed" ? "#3fb950" : "#f85149";
+      statusSpan.style.color = msg === "Completed" ? "#3fb950" : (msg.includes("Limit") ? "#f85149" : "#f85149");
     }
   }
 
