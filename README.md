@@ -1,7 +1,6 @@
 # NEXA Tools Pro 🚀
 
 <div align="center">
-
 ![Version](https://img.shields.io/badge/version-9.5.0-black?style=for-the-badge)
 ![Manifest](https://img.shields.io/badge/manifest-v3-black?style=for-the-badge)
 ![Chrome](https://img.shields.io/badge/Chrome-Extension-black?style=for-the-badge&logo=googlechrome)
