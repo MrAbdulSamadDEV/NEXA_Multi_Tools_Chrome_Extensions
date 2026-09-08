@@ -13,7 +13,6 @@ Equipped with GitHub & TikTok Auto Follow/Unfollow with **Instant Rate-Limit Aut
 
 [Installation](#-installation-guide) • [Features](#-features-breakdown) • [Social Automation](#-social-automation-with-auto-limit-stop) • [Extreme Audio Boost](#-600-extreme-audio-boost) • [Architecture](#-project-structure)
 
-
 ---
 
 </div>
